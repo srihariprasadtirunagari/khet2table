@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Khet2Table – Farmer Marketplace</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#eef2e6;--card:#fbfcf7;--ink:#1b2a1f;--mute:#5b6a5e;--green:#2f6b3a;--gold:#e8a317;--beet:#8e2a4a;--line:#cfd8c3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121b14;--card:#1b2a1f;--ink:#e8efe0;--mute:#9fb0a0;--green:#6fbf7b;--gold:#f0b83a;--beet:#e0789a;--line:#2e4233;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121b14;--card:#1b2a1f;--ink:#e8efe0;--mute:#9fb0a0;--green:#6fbf7b;--gold:#f0b83a;--beet:#e0789a;--line:#2e4233;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--green);color:#fff}
+header h1{margin:0;font-size:1.5rem;font-weight:800;letter-spacing:-.02em}
+header select,header button{font:inherit}
+.who{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input,button{font:inherit;color:var(--ink)}
+select,input{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
+button{cursor:pointer;border:0;border-radius:6px;padding:7px 14px;background:var(--green);color:#fff;font-weight:600}
+button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}button.warn{background:var(--beet);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+nav{display:flex;gap:4px;padding:10px 20px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{background:transparent;color:var(--mute);border-radius:6px 6px 0 0;border-bottom:3px solid transparent}
+nav button.on{color:var(--ink);border-bottom-color:var(--gold)}
+main{max-width:1100px;margin:0 auto;padding:20px}
+.note{background:var(--card);border-left:5px solid var(--gold);padding:8px 12px;margin:0 0 16px;font-size:.92rem;color:var(--mute)}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.pic{font-size:3.2rem;text-align:center;padding:14px;background:color-mix(in srgb,var(--green) 14%,var(--card))}
+.card .b{padding:12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.price{font-size:1.35rem;font-weight:800}.price small{font-weight:400;color:var(--mute)}
+.mute{color:var(--mute);font-size:.88rem}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row input{width:80px}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.8rem;font-weight:600;border:1px solid var(--line)}
+.s-requested{background:#fde9b8;color:#5a3d00}.s-accepted{background:#cfe6d2;color:#17401f}.s-ready{background:#bfdcf0;color:#0f3a57}.s-completed{background:#2f6b3a;color:#fff}.s-cancelled{background:#f2cdd8;color:#6b1a33}
+.tbl{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+.tbl h3{margin:0 0 6px}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px}.stat b{display:block;font-size:1.6rem}
+form.add{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px;background:var(--card);padding:14px;border:1px solid var(--line);border-radius:10px}
+.msg{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;max-width:90vw;z-index:5}
+.ok{color:var(--green)}.bad{color:var(--beet)}
+table{width:100%;border-collapse:collapse}td,th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
+.scroll{overflow-x:auto}
+</style></head><body>
+<header><h1>Khet2Table</h1><div class="who"><label for="user" class="mute" style="color:#dfeede">Demo login</label><select id="user"></select><button class="alt" id="theme" style="color:#fff;border-color:#ffffff66">Theme</button></div></header>
+<nav id="nav"></nav><main id="main"></main><div id="msg" class="msg" hidden></div>
+<script>
+const TODAY=new Date().toISOString().slice(0,10);
+const day=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10);
+const E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const NEXT={requested:'accepted',accepted:'ready',ready:'completed'};
+const CANCELLABLE=['requested','accepted'];
+const NEXT_LABEL={requested:'Accept',accepted:'Mark ready',ready:'Mark completed'};
+
+/* ---------- data ---------- */
+function seed(){
+ const F=[[1,'Lakshmi Reddy','Shamirpet'],[2,'Ravi Kumar','Medchal'],[3,'Anitha Goud','Chevella'],[4,'Mohd. Imran','Vikarabad'],[5,'Sunita Rao','Shankarpally']];
+ const P=[[1,'Hybrid tomatoes','Vegetables','🍅','kg',32,120,0,'both'],[1,'Okra (bhindi)','Vegetables','🥬','kg',48,60,0,'both'],[1,'Spinach (palak)','Vegetables','🥬','bunch',12,200,1,'pickup'],
+ [2,'Red onions','Vegetables','🧅','kg',26,400,0,'both'],[2,'Green chillies','Vegetables','🌶️','kg',70,45,0,'pickup'],[2,'Sweet corn','Vegetables','🌽','piece',14,150,2,'both'],
+ [3,'Banganapalli mango','Fruits','🥭','kg',90,80,3,'both'],[3,'Papaya','Fruits','🍈','kg',34,70,0,'pickup'],[3,'Tender coconut','Fruits','🥥','piece',38,100,0,'both'],
+ [4,'Sona Masuri rice','Grains','🌾','kg',58,500,0,'both'],[4,'Toor dal','Grains','🫘','kg',130,90,0,'both'],[4,'Groundnuts','Grains','🥜','kg',110,60,5,'pickup'],
+ [5,'Country eggs','Dairy & eggs','🥚','dozen',84,40,0,'both'],[5,'Banana (elakki)','Fruits','🍌','dozen',55,60,0,'pickup'],[5,'Raw turmeric','Spices','🟡','kg',75,25,0,'pickup']];
+ return{farmers:F.map(([id,name,loc])=>({id,name,loc})),
+ products:P.map((p,i)=>({id:i+1,fid:p[0],name:p[1],cat:p[2],emoji:p[3],unit:p[4],price:p[5],qty:p[6],date:day(p[7]),mode:p[8],hidden:false})),
+ orders:[],nextOid:1,nextPid:16};
+}
+let db=seed(),cart={},tab='market',user='b1',flt={q:'',cat:'',max:'',loc:'',now:false};
+const USERS=[['b1','Buyer: Meera (household)'],['b2','Buyer: Spice Route (restaurant)'],['f1','Farmer: Lakshmi Reddy'],['f2','Farmer: Ravi Kumar'],['f3','Farmer: Anitha Goud'],['f4','Farmer: Mohd. Imran'],['f5','Farmer: Sunita Rao'],['a1','Admin']];
+const role=()=>user[0]==='b'?'buyer':user[0]==='f'?'farmer':'admin';
+const fid=()=>+user.slice(1);
+const prod=(d,id)=>d.products.find(p=>p.id===id);
+
+/* ---------- business rules (pure, tested below) ---------- */
+function placeOrder(d,buyer,items,fulfil){
+ const lines=Object.entries(items).map(([k,q])=>[+k,+q]).filter(([,q])=>q>0);
+ if(!lines.length)return{ok:false,err:'Your cart is empty.'};
+ for(const[pid,q] of lines){const p=prod(d,pid);
+  if(!p||p.hidden)return{ok:false,err:'A listing is no longer available.'};
+  if(!Number.isInteger(q))return{ok:false,err:p.name+': enter a whole number.'};
+  if(q>p.qty)return{ok:false,err:`${p.name}: only ${p.qty} ${p.unit} left (you asked for ${q}).`};
+  if(fulfil==='delivery'&&p.mode!=='both')return{ok:false,err:p.name+' is pickup only.'};}
+ const byF={};lines.forEach(([pid,q])=>{const p=prod(d,pid);(byF[p.fid]=byF[p.fid]||[]).push({pid,qty:q,price:p.price,name:p.name,unit:p.unit})});
+ const made=[];
+ for(const f in byF){const its=byF[f];its.forEach(i=>prod(d,i.pid).qty-=i.qty);
+  const o={id:d.nextOid++,buyer,fid:+f,items:its,status:'requested',fulfil,total:its.reduce((s,i)=>s+i.qty*i.price,0),placed:TODAY};d.orders.push(o);made.push(o)}
+ return{ok:true,orders:made};
+}
+function advance(d,oid){const o=d.orders.find(x=>x.id===oid);if(!o||!NEXT[o.status])return{ok:false,err:'This order cannot move forward.'};o.status=NEXT[o.status];return{ok:true}}
+function cancel(d,oid){const o=d.orders.find(x=>x.id===oid);
+ if(!o||!CANCELLABLE.includes(o.status))return{ok:false,err:'Only requested or accepted orders can be cancelled.'};
+ o.items.forEach(i=>{const p=prod(d,i.pid);if(p)p.qty+=i.qty});o.status='cancelled';return{ok:true}}
+const dupes=d=>d.products.filter(p=>d.products.some(q=>q.id<p.id&&q.fid===p.fid&&q.name.toLowerCase()===p.name.toLowerCase()&&!q.hidden));
+
+function runTests(){
+ const T=[];const t=(n,f)=>{try{T.push([n,!!f()])}catch(e){T.push([n+' ('+e.message+')',false])}};
+ t('Order above stock is rejected',()=>{const d=seed();const r=placeOrder(d,'b1',{1:121},'pickup');return!r.ok&&prod(d,1).qty===120});
+ t('Valid order reduces stock',()=>{const d=seed();placeOrder(d,'b1',{1:20},'pickup');return prod(d,1).qty===100});
+ t('Cancelling restores stock exactly once',()=>{const d=seed();const o=placeOrder(d,'b1',{1:20},'pickup').orders[0];cancel(d,o.id);const again=cancel(d,o.id);return prod(d,1).qty===120&&!again.ok});
+ t('Completed orders cannot be cancelled',()=>{const d=seed();const o=placeOrder(d,'b1',{1:5},'pickup').orders[0];advance(d,o.id);advance(d,o.id);advance(d,o.id);return o.status==='completed'&&!cancel(d,o.id).ok});
+ t('Two buyers cannot oversell the last units',()=>{const d=seed();placeOrder(d,'b1',{15:20},'pickup');return!placeOrder(d,'b2',{15:10},'pickup').ok&&prod(d,15).qty===5});
+ t('Delivery refused for pickup-only items',()=>!placeOrder(seed(),'b1',{3:1},'delivery').ok);
+ t('Hidden listings cannot be ordered',()=>{const d=seed();prod(d,1).hidden=true;return!placeOrder(d,'b1',{1:1},'pickup').ok});
+ t('Cart spanning two farmers splits into two orders',()=>placeOrder(seed(),'b1',{1:1,4:1},'pickup').orders.length===2);
+ t('Duplicate listing is detected',()=>{const d=seed();d.products.push({...prod(d,1),id:99});return dupes(d).some(p=>p.id===99)});
+ return T}
+
+/* ---------- ui ---------- */
+const $=id=>document.getElementById(id);
+function say(m,bad){const e=$('msg');e.textContent=m;e.hidden=false;e.style.background=bad?'var(--beet)':'var(--ink)';clearTimeout(say.t);say.t=setTimeout(()=>e.hidden=true,3200)}
+const fname=id=>db.farmers.find(f=>f.id===id);
+const money=n=>'₹'+n.toLocaleString('en-IN');
+const pill=s=>`<span class="pill s-${s}">${s}</span>`;
+const TABS={buyer:[['market','Browse produce'],['cart','Cart ('+Object.keys(cart).length+')'],['orders','My orders']],farmer:[['inv','Inventory'],['ford','Incoming orders'],['sales','Sales']],admin:[['mod','Moderation']]};
+function save(){try{localStorage.setItem('k2t',JSON.stringify(db))}catch(e){}}
+try{const s=localStorage.getItem('k2t');if(s)db=JSON.parse(s)}catch(e){}
+function render(){
+ $('user').innerHTML=USERS.map(([v,l])=>`<option value="${v}" ${v===user?'selected':''}>${l}</option>`).join('');
+ const tabs=[...TABS[role()],['about','About & tests']];
+ if(!tabs.some(t=>t[0]===tab))tab=tabs[0][0];
+ $('nav').innerHTML=tabs.map(([k,l])=>`<button class="${k===tab?'on':''}" data-t="${k}">${l}</button>`).join('');
+ $('main').innerHTML=({market,cartV,orders,inv,ford,sales,mod,about})[tab]();save()}
+function market(){
+ const cats=[...new Set(db.products.map(p=>p.cat))],locs=db.farmers.map(f=>f.loc);
+ const list=db.products.filter(p=>!p.hidden&&p.name.toLowerCase().includes(flt.q.toLowerCase())&&(!flt.cat||p.cat===flt.cat)&&(!flt.max||p.price<=+flt.max)&&(!flt.loc||fname(p.fid).loc===flt.loc)&&(!flt.now||(p.qty>0&&p.date<=TODAY)));
+ return`<p class="note">Payment is <b>cash on pickup</b> (simulated; no card details are collected). Delivery is <b>demo only</b>: no courier network exists, so the farmer arranges it by phone.</p>
+ <div class="filters"><input id="fq" placeholder="Search produce" value="${E(flt.q)}" aria-label="Search produce">
+ <select id="fc" aria-label="Category"><option value="">All categories</option>${cats.map(c=>`<option ${c===flt.cat?'selected':''}>${c}</option>`).join('')}</select>
+ <select id="fl" aria-label="Location"><option value="">All locations</option>${locs.map(c=>`<option ${c===flt.loc?'selected':''}>${c}</option>`).join('')}</select>
+ <input id="fm" type="number" min="0" placeholder="Max price ₹" value="${flt.max}" aria-label="Maximum price">
+ <label class="row"><input id="fn" type="checkbox" style="width:auto" ${flt.now?'checked':''}> Available now</label></div>
+ ${list.length?`<div class="grid">${list.map(card).join('')}</div>`:'<p>No produce matches. Clear a filter to see more.</p>'}`}
+function card(p){const f=fname(p.fid),soon=p.date>TODAY,out=p.qty<1;
+ return`<div class="card"><div class="pic" aria-hidden="true">${p.emoji}</div><div class="b"><b>${E(p.name)}</b>
+ <div class="price">${money(p.price)}<small> per ${E(p.unit)}</small></div>
+ <div class="mute">${E(f.name)} · ${E(f.loc)}</div>
+ <div class="${out?'bad':''}">${out?'Sold out':p.qty+' '+E(p.unit)+' left'} ${soon?'· from '+p.date:'· available now'}</div>
+ <div class="mute">${p.mode==='both'?'Pickup or demo delivery':'Pickup only'}</div>
+ ${role()==='buyer'?`<div class="row" style="margin-top:auto"><input type="number" min="1" max="${p.qty}" value="1" id="q${p.id}" aria-label="Quantity"><button data-add="${p.id}" ${out?'disabled':''}>Add to cart</button></div>`:''}</div></div>`}
+function cartV(){const ids=Object.keys(cart);if(!ids.length)return'<p>Your cart is empty. Browse produce and add something.</p>';
+ let tot=0;const rows=ids.map(id=>{const p=prod(db,+id),q=cart[id];tot+=p.price*q;return`<tr><td>${p.emoji} ${E(p.name)}<div class="mute">${E(fname(p.fid).name)}</div></td><td><input type="number" min="1" value="${q}" data-cq="${id}" style="width:70px" aria-label="Quantity"> ${E(p.unit)}</td><td>${money(p.price*q)}</td><td><button class="alt" data-rm="${id}">Remove</button></td></tr>`}).join('');
+ return`<div class="tbl scroll"><table>${rows}</table><h3>Total ${money(tot)}</h3>
+ <div class="row"><label>Fulfilment <select id="ful"><option value="pickup">Pickup (cash on pickup)</option><option value="delivery">Delivery (demo only)</option></select></label><button data-place="1">Request order</button></div>
+ <p class="mute">Quantities are checked against live stock when you request. Farmers confirm each request.</p></div>`}
+function orderBlock(o,asFarmer){const who=asFarmer?'Buyer: '+(o.buyer==='b1'?'Meera':'Spice Route'):'Farmer: '+fname(o.fid).name;
+ const acts=asFarmer?`${NEXT[o.status]?`<button data-adv="${o.id}">${NEXT_LABEL[o.status]}</button>`:''}${CANCELLABLE.includes(o.status)?`<button class="warn" data-can="${o.id}">Decline / cancel</button>`:''}`:(CANCELLABLE.includes(o.status)?`<button class="warn" data-can="${o.id}">Cancel order</button>`:'');
+ return`<div class="tbl"><div class="row" style="justify-content:space-between"><h3>Order #${o.id}</h3>${pill(o.status)}</div><div class="mute">${who} · ${o.fulfil==='pickup'?'Pickup':'Delivery (demo)'} · cash · ${o.placed}</div>
+ <ul>${o.items.map(i=>`<li>${i.qty} ${E(i.unit)} ${E(i.name)} × ${money(i.price)}</li>`).join('')}</ul><b>${money(o.total)}</b> <span class="row" style="display:inline-flex;margin-left:12px">${acts}</span></div>`}
+function orders(){const l=db.orders.filter(o=>o.buyer===user).reverse();return l.length?l.map(o=>orderBlock(o,false)).join(''):'<p>No orders yet. Your history appears here once you request produce.</p>'}
+function inv(){const mine=db.products.filter(p=>p.fid===fid());
+ return`<form class="add" id="addf"><b style="grid-column:1/-1">List new produce</b><input name="name" placeholder="Name" required><select name="cat">${['Vegetables','Fruits','Grains','Spices','Dairy & eggs'].map(c=>`<option>${c}</option>`).join('')}</select>
+ <input name="unit" placeholder="Unit (kg, dozen)" required><input name="price" type="number" min="1" placeholder="Price ₹ per unit" required><input name="qty" type="number" min="1" placeholder="Quantity" required>
+ <input name="date" type="date" value="${TODAY}" aria-label="Available from"><select name="mode"><option value="pickup">Pickup only</option><option value="both">Pickup + demo delivery</option></select>
+ <input name="emoji" placeholder="Emoji photo 🍅" maxlength="4"><button>Publish listing</button></form>
+ <div class="tbl scroll"><table><tr><th>Item</th><th>Price</th><th>Stock</th><th>Available</th><th></th></tr>${mine.map(p=>`<tr><td>${p.emoji} ${E(p.name)}${p.hidden?' <span class="pill s-cancelled">hidden by admin</span>':''}</td><td>${money(p.price)}/${E(p.unit)}</td><td><input type="number" min="0" value="${p.qty}" data-sq="${p.id}" style="width:80px" aria-label="Stock"></td><td>${p.date}</td><td><button class="alt" data-del="${p.id}">Remove</button></td></tr>`).join('')}</table></div>`}
+function ford(){const l=db.orders.filter(o=>o.fid===fid()).reverse();return l.length?l.map(o=>orderBlock(o,true)).join(''):'<p>No incoming orders yet.</p>'}
+function sales(){const m=db.orders.filter(o=>o.fid===fid());const done=m.filter(o=>o.status==='completed'),open=m.filter(o=>NEXT[o.status]);
+ return`<div class="stats"><div class="stat"><b>${money(done.reduce((s,o)=>s+o.total,0))}</b>Completed sales</div><div class="stat"><b>${open.length}</b>Open orders</div><div class="stat"><b>${m.filter(o=>o.status==='cancelled').length}</b>Cancelled</div></div><p class="mute">Open orders already hold stock aside, so inventory stays accurate.</p>`}
+function mod(){const d=dupes(db).map(p=>p.id);
+ return`<p class="note">Flagged rows share a farmer and name with an earlier listing. Hide a listing to remove it from the market without deleting its order history.</p><div class="tbl scroll"><table><tr><th>Listing</th><th>Farmer</th><th>Flag</th><th></th></tr>${db.products.map(p=>`<tr><td>${p.emoji} ${E(p.name)}</td><td>${E(fname(p.fid).name)}</td><td>${d.includes(p.id)?'<span class="bad">possible duplicate</span>':''}</td><td><button class="${p.hidden?'alt':'warn'}" data-hide="${p.id}">${p.hidden?'Restore':'Hide'}</button></td></tr>`).join('')}</table></div>`}
+function about(){const T=runTests();
+ return`<div class="tbl"><h3>Automated checks (${T.filter(x=>x[1]).length}/${T.length} pass)</h3><ul>${T.map(([n,ok])=>`<li class="${ok?'ok':'bad'}">${ok?'Pass':'Fail'}: ${E(n)}</li>`).join('')}</ul></div>
+ <div class="tbl"><h3>How it fits together</h3><p>Browser UI → business rules (placeOrder, advance, cancel) → data store. In this prototype the store is browser storage; a production build would put the same rules behind a REST API with a database.</p>
+ <p><b>Demo logins:</b> pick any user above (no passwords). <b>Known limits:</b> emoji stand in for photos, no real accounts or payments, delivery is not operational.</p>
+ <button class="alt" data-reset="1">Reset demo data</button></div>`}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const D=b.dataset;
+ if(D.t){tab=D.t}
+ else if(D.add){const q=+$('q'+D.add).value,p=prod(db,+D.add);if(!(q>=1)||q>p.qty)return say(`Only ${p.qty} ${p.unit} available.`,1);const had=cart[D.add]||0;if(had+q>p.qty)return say(`You already hold ${had}; only ${p.qty} ${p.unit} left.`,1);cart[D.add]=had+q;say('Added to cart.')}
+ else if(D.rm){delete cart[D.rm]}
+ else if(D.place){const r=placeOrder(db,user,cart,$('ful').value);if(!r.ok)return say(r.err,1);cart={};tab='orders';say(r.orders.length+' order request(s) sent.')}
+ else if(D.adv){const r=advance(db,+D.adv);if(!r.ok)say(r.err,1)}
+ else if(D.can){const r=cancel(db,+D.can);r.ok?say('Order cancelled and stock returned.'):say(r.err,1)}
+ else if(D.del){const id=+D.del;if(db.orders.some(o=>o.items.some(i=>i.pid===id&&NEXT[o.status])))return say('Open orders exist for this item. Complete or cancel them first.',1);db.products=db.products.filter(p=>p.id!==id)}
+ else if(D.hide){const p=prod(db,+D.hide);p.hidden=!p.hidden}
+ else if(D.reset){db=seed();cart={}}
+ else if(b.id==='theme'){const r=document.documentElement,dk=getComputedStyle(r).colorScheme==='dark';r.dataset.theme=dk?'light':'dark';return}
+ else return;render()});
+document.addEventListener('change',e=>{const t=e.target,D=t.dataset;
+ if(t.id==='user'){user=t.value;cart={};tab='';render()}
+ else if(D.sq!==undefined){const v=Math.max(0,Math.floor(+t.value||0));prod(db,+D.sq).qty=v;say('Stock updated.');render()}
+ else if(D.cq){const p=prod(db,+D.cq),v=Math.floor(+t.value);if(!(v>=1)||v>p.qty){say(`Only ${p.qty} ${p.unit} available.`,1)}else cart[D.cq]=v;render()}
+ else if(t.id==='fc'){flt.cat=t.value;render()}else if(t.id==='fl'){flt.loc=t.value;render()}
+ else if(t.id==='fm'){flt.max=t.value;render()}else if(t.id==='fn'){flt.now=t.checked;render()}});
+document.addEventListener('input',e=>{if(e.target.id==='fq'){flt.q=e.target.value;const p=e.target.selectionStart;render();const n=$('fq');n.focus();n.setSelectionRange(p,p)}});
+document.addEventListener('submit',e=>{if(e.target.id!=='addf')return;e.preventDefault();const f=new FormData(e.target);
+ const p={id:db.nextPid++,fid:fid(),name:f.get('name').trim(),cat:f.get('cat'),emoji:f.get('emoji')||'🌱',unit:f.get('unit').trim(),price:+f.get('price'),qty:Math.floor(+f.get('qty')),date:f.get('date'),mode:f.get('mode'),hidden:false};
+ if(db.products.some(q=>q.fid===p.fid&&q.name.toLowerCase()===p.name.toLowerCase()))say('Listed. Note: you already have an item with this name; admin may flag it.',1);else say('Listing published.');
+ db.products.push(p);render()});
+render();
+</script></body></html>
